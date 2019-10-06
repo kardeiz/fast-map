@@ -10,7 +10,6 @@ extern crate quote;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use std::convert::TryFrom;
 
 #[proc_macro_derive(FastMap, attributes(fast_map))]
 pub fn fastmap_derive(input: TokenStream) -> TokenStream {
@@ -50,12 +49,10 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
     let out_type = &out_type;
 
     if key_type.is_none() || out_type.is_none() {
-        return Err("`FastMap` can only be derived on a `TupX` wrapping struct".into());
+        return Err("`FastMap` can only be derived on a `MapX` wrapping struct".into());
     }
 
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    let out = quote!();
 
     let fast_map_path: syn::Path = parse_quote!(fast_map);
     let keys_path: syn::Path = parse_quote!(keys);
@@ -85,17 +82,32 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
     let get_cases = keys.iter().enumerate()
         .map(|(idx, k)| {
             let idx = syn::Index::from(idx);
-            quote!(&#k => self.0.tup.#idx.as_ref())
+            quote!(#k => self.0.tup.#idx.as_ref())
         })
         .collect::<Vec<_>>();
 
     let insert_cases = keys.iter().enumerate()
         .map(|(idx, k)| {
             let idx = syn::Index::from(idx);
-            quote!(&#k => {
-                std::mem::swap(&mut self.0.tup.#idx, &mut val);
-                return val;
+            quote!(#k => {
+                self.0.tup.#idx.replace(val)
             })
+        })
+        .collect::<Vec<_>>();
+
+    let remove_cases = keys.iter().enumerate()
+        .map(|(idx, k)| {
+            let idx = syn::Index::from(idx);
+            quote!(#k => {
+                self.0.tup.#idx.take()
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let values = keys.iter().enumerate()
+        .map(|(idx, _)| {
+            let idx = syn::Index::from(idx);
+            quote!(self.0.tup.#idx.as_ref())
         })
         .collect::<Vec<_>>();
 
@@ -115,15 +127,29 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
             }
 
             pub fn insert<T: std::borrow::Borrow<#key_type>>(&mut self, key: T, val: #out_type) -> Option<#out_type> {
-                let mut val = Some(val);
+                let mut val = val;
                 match key.borrow() {
                     #(#insert_cases,)*
                     _ => None,
                 }
             }
+
+            pub fn remove<T: std::borrow::Borrow<#key_type>>(&mut self, key: T) -> Option<#out_type> {
+                match key.borrow() {
+                    #(#remove_cases,)*
+                    _ => None,
+                }
+            }
+
+            pub fn values(&self) -> impl Iterator<Item=&#out_type> {
+                vec![#(#values,)*].into_iter().flat_map(|x| x )
+            }
+
         }
 
     };
+
+    // panic!("{}", out.to_string());
 
 
     Ok(out.into())

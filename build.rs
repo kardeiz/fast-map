@@ -5,9 +5,9 @@ fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let dest_path = std::path::Path::new(&out_dir).join("maps.inner.rs");
 
-    let out = (1..=32).into_iter().map(|i| {
-        let tup_ty = (0..i).into_iter().map(|_| quote!(crate::Entry<T>)).collect::<Vec<_>>();
-        let nones = (0..i).into_iter().map(|_| quote!(crate::Entry::Vacant)).collect::<Vec<_>>();
+    let out = (1..=3).into_iter().map(|i| {
+        let tup_ty = (0..i).into_iter().map(|_| quote!(Option<T>)).collect::<Vec<_>>();
+        let nones = (0..i).into_iter().map(|_| quote!(None)).collect::<Vec<_>>();
         let name = format_ident!("Map{}", i as u32);
 
         quote! {
