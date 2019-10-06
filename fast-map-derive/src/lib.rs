@@ -80,14 +80,6 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
         })
         .filter(|x| &x.path == &keys_path)
         .flat_map(|x| x.nested)
-        // .filter_map(|x| match x {
-        //     syn::NestedMeta::Meta(m) => Some(m),
-        //     _ => None,
-        // })
-        // .filter_map(|x| match x {
-        //     syn::Meta::Path(m) => Some(m),
-        //     _ => None,
-        // })
         .collect::<Vec<_>>();
 
     let get_cases = keys.iter().enumerate()
@@ -110,6 +102,10 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
     let out = quote! {
 
         impl #impl_generics #name #ty_generics #where_clause {
+
+            pub fn new() -> Self {
+                Self::default()
+            }
 
             pub fn get<T: std::borrow::Borrow<#key_type>>(&self, key: T) -> Option<&#out_type> {
                 match key.borrow() {

@@ -1,9 +1,19 @@
 pub use fast_map_derive::FastMap;
 
 #[allow(unused)]
-mod tups;
+mod maps;
 
-pub use tups::*;
+pub use maps::*;
+
+pub(crate) struct Entry<T> {
+    Occupied(T),
+    Vacant
+}
+
+impl std::convert::AsRef<Option<T>> for Entry<T> {
+    fn as_ref(&self) -> &T;
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -17,13 +27,13 @@ mod tests {
 
         #[derive(Default, FastMap)]
         #[fast_map(keys(A::B, A::C, A::D))]
-        struct Foo(crate::Tup3<A, String>);
+        struct Foo(crate::Map3<A, String>);
 
         let mut foo = Foo::default();
 
-        foo.insert(&A::B, "STRING".into());
+        foo.insert(A::B, "STRING".into());
 
-        let y = foo.get(&A::B);
+        let y = foo.get(A::B);
 
         println!("{:?}", &y);
 
