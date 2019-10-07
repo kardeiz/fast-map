@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate quote;
 
-#[cfg(not(feature="no-build"))]
 fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let dest_path = std::path::Path::new(&out_dir).join("maps.inner.rs");
@@ -41,6 +40,3 @@ fn main() {
 
     std::fs::write(dest_path, quote!(#(#out)*).to_string()).unwrap();
 }
-
-#[cfg(feature="no-build")]
-fn main() {}
