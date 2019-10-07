@@ -1,3 +1,4 @@
 /target
+/fast-map-derive/target
 **/*.rs.bk
 Cargo.lock

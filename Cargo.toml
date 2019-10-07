@@ -1,16 +1,17 @@
 [package]
 name = "fast-map"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jacob Brown <kardeiz@gmail.com>"]
 edition = "2018"
 readme = "README.md"
 license = "MIT"
-description = "Maplike using match"
+description = "Map-like structs"
 repository = "https://github.com/kardeiz/fast-map"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fast-map-derive = { path = "fast-map-derive", version = "0.1" }
+fast-map-derive = { path = "fast-map-derive", version = "0.1.1" }
 
 [build-dependencies]
 quote = "1.0.2"
+

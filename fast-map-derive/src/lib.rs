@@ -1,5 +1,5 @@
 #![recursion_limit = "128"]
-#![type_length_limit="1880989"]
+#![type_length_limit = "1880989"]
 
 extern crate proc_macro;
 
@@ -17,9 +17,11 @@ pub fn fastmap_derive(input: TokenStream) -> TokenStream {
     fastmap_derive_inner(input).unwrap()
 }
 
-fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn std::error::Error>> {
+fn fastmap_derive_inner(
+    input: syn::DeriveInput,
+) -> Result<TokenStream, Box<dyn std::error::Error>> {
     let name = &input.ident;
-    
+
     let mut key_type = None;
     let mut out_type = None;
 
@@ -27,7 +29,7 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
         if let syn::Fields::Unnamed(ref fields) = st.fields {
             if fields.unnamed.len() == 1 {
                 let field = fields.unnamed.first().unwrap();
-                
+
                 if let syn::Type::Path(ref ty_path) = field.ty {
                     if let Some(ref last) = ty_path.path.segments.last() {
                         if let syn::PathArguments::AngleBracketed(ref ab) = last.arguments {
@@ -35,14 +37,14 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
                                 &[key, out] => {
                                     key_type = Some(key.clone());
                                     out_type = Some(out.clone());
-                                },
+                                }
                                 _ => {}
                             }
                         }
-                    }                    
+                    }
                 }
             }
-        } 
+        }
     }
 
     let key_type = &key_type;
@@ -56,7 +58,6 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
 
     let fast_map_path: syn::Path = parse_quote!(fast_map);
     let keys_path: syn::Path = parse_quote!(keys);
-    let strict_path: syn::Path = parse_quote!(strict);
     let crate_name_path: syn::Path = parse_quote!(crate_name);
 
     let l_attrs = input
@@ -74,7 +75,8 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
             _ => None,
         });
 
-    let keys = l_attrs.clone()
+    let keys = l_attrs
+        .clone()
         .filter_map(|x| match x {
             syn::Meta::List(ml) => Some(ml),
             _ => None,
@@ -83,100 +85,87 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
         .flat_map(|x| x.nested)
         .collect::<Vec<_>>();
 
-    let strict = l_attrs.clone()
-        .filter_map(|x| match x {
-            syn::Meta::Path(path) => Some(path),
-            _ => None,
-        })
-        .filter(|x| x == &strict_path)
-        .next()
-        .is_some();
-
-    let crate_name = l_attrs.clone()
+    let crate_name = l_attrs
+        .clone()
         .filter_map(|x| match x {
             syn::Meta::NameValue(mnv) => Some(mnv),
             _ => None,
         })
         .filter(|x| &x.path == &crate_name_path)
-        .filter_map(|x| match x.lit { syn::Lit::Str(s) => Some(s), _ => None })
+        .filter_map(|x| match x.lit {
+            syn::Lit::Str(s) => Some(s),
+            _ => None,
+        })
         .map(|x| syn::Ident::new(&x.value(), proc_macro2::Span::call_site()))
         .next()
         .unwrap_or_else(|| syn::Ident::new("fast_map", proc_macro2::Span::call_site()));
 
-    let get_cases = keys.iter().enumerate()
+    let get_cases = keys
+        .iter()
+        .enumerate()
         .map(|(idx, k)| {
             let idx = syn::Index::from(idx);
-            let mut ret = quote!(self.0.tup.#idx.as_ref());
-            if strict { ret = quote!(Ok(#ret)); }
+            let ret = quote!(Ok(self.0.tup.#idx.as_ref()));
             quote!(#k => #ret)
         })
         .collect::<Vec<_>>();
 
-    let insert_cases = keys.iter().enumerate()
+    let insert_cases = keys
+        .iter()
+        .enumerate()
         .map(|(idx, k)| {
             let idx = syn::Index::from(idx);
-            let mut ret = quote!(self.0.tup.#idx.replace(val));
-            if strict { ret = quote!(Ok(#ret)); }
+            let ret = quote!(Ok(self.0.tup.#idx.replace(val)));
             quote!(#k => #ret)
         })
         .collect::<Vec<_>>();
 
-    let remove_cases = keys.iter().enumerate()
+    let remove_cases = keys
+        .iter()
+        .enumerate()
         .map(|(idx, k)| {
             let idx = syn::Index::from(idx);
-            let mut ret = quote!(self.0.tup.#idx.take());
-            if strict { ret = quote!(Ok(#ret)); }
+            let ret = quote!(Ok(self.0.tup.#idx.take()));
             quote!(#k => #ret)
         })
         .collect::<Vec<_>>();
 
-    let values = keys.iter().enumerate()
+    let values = keys
+        .iter()
+        .enumerate()
         .map(|(idx, _)| {
             let idx = syn::Index::from(idx);
             quote!(self.0.tup.#idx.as_ref())
         })
         .collect::<Vec<_>>();
-
-    let mut else_case = quote!(_ => None);
-    let mut ref_ret = quote!(Option<&#out_type>);
-    let mut own_ret = quote!(Option<#out_type>);
-    let mut map_like = quote!(MapLike);
-
-    if strict {
-        else_case = quote!(_ => Err(#crate_name::Error::KeyNotFound));
-        ref_ret = quote!(std::result::Result<#ref_ret, #crate_name::Error>);
-        own_ret = quote!(std::result::Result<#own_ret, #crate_name::Error>);
-        map_like = quote!(strict::MapLike);
-    }
-
     let out = quote! {
 
-        impl #impl_generics #crate_name::#map_like<#key_type, #out_type> for #name #ty_generics #where_clause {
+        impl #impl_generics #crate_name::strict::MapLike<#key_type, #out_type> for #name #ty_generics #where_clause {
 
-            fn get<T: std::borrow::Borrow<#key_type>>(&self, key: T) -> #ref_ret {
+            fn get<T: std::borrow::Borrow<#key_type>>(&self, key: T) -> std::result::Result<Option<&#out_type>, #crate_name::Error> {
                 match key.borrow() {
                     #(#get_cases,)*
-                    #else_case,
+                    _ => Err(#crate_name::Error::KeyNotFound),
                 }
             }
 
-            fn insert<T: std::borrow::Borrow<#key_type>>(&mut self, key: T, val: #out_type) -> #own_ret {
+            fn insert<T: std::borrow::Borrow<#key_type>>(&mut self, key: T, val: #out_type) -> std::result::Result<Option<#out_type>, #crate_name::Error> {
                 let mut val = val;
                 match key.borrow() {
                     #(#insert_cases,)*
-                    #else_case,
+                    _ => Err(#crate_name::Error::KeyNotFound),
                 }
             }
 
-            fn remove<T: std::borrow::Borrow<#key_type>>(&mut self, key: T) -> #own_ret {
+            fn remove<T: std::borrow::Borrow<#key_type>>(&mut self, key: T) -> std::result::Result<Option<#out_type>, #crate_name::Error> {
                 match key.borrow() {
                     #(#remove_cases,)*
-                    #else_case,
+                    _ => Err(#crate_name::Error::KeyNotFound),
                 }
             }
 
             fn values<'fast_map>(&'fast_map self) -> #crate_name::Values<'fast_map, #out_type> {
-                #crate_name::Values(vec![#(#values,)*].into_iter())
+                #crate_name::Values::new(vec![#(#values,)*].into_iter())
             }
 
         }
@@ -184,5 +173,4 @@ fn fastmap_derive_inner(input: syn::DeriveInput) -> Result<TokenStream, Box<dyn 
     };
 
     Ok(out.into())
-
 }

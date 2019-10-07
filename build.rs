@@ -7,18 +7,24 @@ fn main() {
 
     let out = (1..=32)
         .into_iter()
-        .chain(std::iter::once(64))
+        .chain(vec![48, 64])
         .map(|i| {
             let tup_ty = (0..i).into_iter().map(|_| quote!(Option<T>)).collect::<Vec<_>>();
             let nones = (0..i).into_iter().map(|_| quote!(None)).collect::<Vec<_>>();
             let name = format_ident!("Map{}", i as u32);
 
+            let doc_note = format!(
+                "Container for a `map` with {} {}",
+                i,
+                if i == 1 { "field" } else { "fields" }
+            );
+
             quote! {
+                #[doc = #doc_note]
                 pub struct #name<K: ?Sized, T> {
                     pub tup: (#(#tup_ty,)*),
-                    key: std::marker::PhantomData<dyn Fn() -> K>
+                    key: std::marker::PhantomData<fn() -> K>
                 }
-
 
                 impl<K: ?Sized, T> Default for #name<K, T> {
                     fn default() -> Self {
