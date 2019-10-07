@@ -1,13 +1,14 @@
 #[macro_use]
 extern crate quote;
 
+#[cfg(not(feature="no-build"))]
 fn main() {
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let dest_path = std::path::Path::new(&out_dir).join("maps.inner.rs");
 
-    let out = (1..=16)
+    let out = (1..=32)
         .into_iter()
-        // .chain(vec![32])
+        .chain(vec![48, 64])
         .map(|i| {
             let tup_ty = (0..i).into_iter().map(|_| quote!(Option<T>)).collect::<Vec<_>>();
             let nones = (0..i).into_iter().map(|_| quote!(None)).collect::<Vec<_>>();
@@ -40,3 +41,6 @@ fn main() {
 
     std::fs::write(dest_path, quote!(#(#out)*).to_string()).unwrap();
 }
+
+#[cfg(feature="no-build")]
+fn main() {}
