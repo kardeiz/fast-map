@@ -13,29 +13,23 @@ mod tests {
     #[test]
     fn it_works() {      
 
-        pub enum A { B, C, D };
+        pub enum A { A, B, C, D };
 
         #[derive(Default, FastMap)]
-        #[fast_map(keys(A::B, A::C, A::D))]
-        struct Foo(crate::Map3<A, String>);
+        #[fast_map(keys(A::A, A::B, A::C, A::D))]
+        struct Foo(crate::Map4<A, String>);
 
-        let mut foo = Foo::default();
+        let mut foo = Foo::new();
 
-        foo.insert(A::B, "STRING".into());
+        foo.insert(A::B, "B".into());
 
-        let y = foo.get(A::B);
+        assert_eq!(foo.get(A::B), Some(&"B".to_string()));
 
-        println!("{:?}", &y);
+        assert_eq!(foo.get(A::C), None);
 
-        let z = foo.get(&A::C);
+        foo.insert(A::C, "C".into());
 
-        println!("{:?}", &z);
-
-        foo.insert(A::C, "2".into());
-
-        for f in foo.values() {
-            println!("{:?}", &f);
-        }
+        assert_eq!(foo.values().collect::<Vec<_>>().len(), 2);
     }
 
     #[test]
@@ -45,17 +39,16 @@ mod tests {
         #[fast_map(keys("x", "y", "z"))]
         struct Foo<'a>(crate::Map3<str, &'a str>);
 
-        let mut foo = Foo::default();
+        let mut foo = Foo::new();
 
         foo.insert("x", "X");
 
-        let x = foo.remove("x");
+        let x = foo.remove("x").unwrap();
 
-        println!("{:?}", &x);
+        assert_eq!(x, "X");
 
-        for f in foo.values() {
-            println!("{:?}", &f);
-        }
+        assert!(foo.values().collect::<Vec<_>>().is_empty());
+
     }
 
     #[test]
@@ -68,14 +61,13 @@ mod tests {
         let mut foo = Foo::default();
 
         foo.insert(1, "1");
+        foo.insert(2, "2");
+        foo.insert(3, "3");
+        foo.insert(4, "4");
 
         let x = foo.remove(1);
 
-        println!("{:?}", &x);
-
-        for f in foo.values() {
-            println!("{:?}", &f);
-        }
+        assert_eq!(foo.values().map(|x| *x).collect::<Vec<_>>(), vec!["2", "3"]);
 
     }
 }
