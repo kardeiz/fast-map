@@ -1,4 +1,6 @@
-/target
+/target/*
+!/target/doc/
+/target/doc/*
 !/target/doc/fast_map
 /fast-map-derive/target
 **/*.rs.bk
