@@ -1,8 +1,7 @@
 # fast-map
 
+[![Docs](https://docs.rs/fast-map/badge.svg)](https://docs.rs/crate/fast-map/)
 [![Crates.io](https://img.shields.io/crates/v/fast-map.svg)](https://crates.io/crates/fast-map)
-
-[Docs](https://kardeiz.github.io/fast-map/fast_map/)
 
 A small library and custom derive to create a map-like struct that uses match expressions to `get` and `insert` values.
 
