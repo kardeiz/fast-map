@@ -15,6 +15,9 @@ Provides the following operations on the wrapping struct (via `derive` macros):
 * `MyMap::remove`, returns `Result<Option<V>, Error>`
 * `MyMap::values`, returns an iterator over `&V`s
 
+If you know that your operations cannot fail (e.g. if your key type is an `enum`, and you list all variants as keys),
+you can add `infallible = true` to your derive attributes, which will `unwrap` the result of your map operations.
+
 ## Usage
 
 ```rust
@@ -23,24 +26,29 @@ fn main() {
     pub enum A { A, B, C, D };
 
     #[derive(Default, fast_map::FastMap)]
-    #[fast_map(keys(A::A, A::B, A::C, A::D))]
+    // We know this cannot fail, since we list all the `enum` variants, so we add `infallible = true`
+    #[fast_map(infallible = true, keys(A::A, A::B, A::C, A::D))]
     struct Foo(fast_map::Map4<A, String>);
 
     let mut foo = Foo::default();
 
-    foo.insert(A::B, "B".into()).unwrap();
+    foo.insert(A::B, "B".into());
 
-    assert_eq!(foo.get(A::B).unwrap(), Some(&"B".to_string()));
+    assert_eq!(foo.get(A::B), Some(&"B".to_string()));
 
-    assert_eq!(foo.get(A::C).unwrap(), None);
+    assert_eq!(foo.get(A::C), None);
 
-    foo.insert(A::C, "C".into()).unwrap();
+    foo.insert(A::C, "C".into());
 
     assert_eq!(foo.values().collect::<Vec<_>>().len(), 2);
 }
 ```
 
 ## Changelog
+
+### 0.2.1
+
+* Add the non-erroring operations back as depending on macro attribute (`infallible = true`). Default is `false`.
 
 ### 0.2.0
 
@@ -50,6 +58,6 @@ fn main() {
 
 <hr/>
 
-Current version: 0.2.0
+Current version: 0.2.1
 
 License: MIT
