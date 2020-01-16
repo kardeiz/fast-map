@@ -110,6 +110,16 @@ fn fastmap_derive_inner(
         })
         .collect::<Vec<_>>();
 
+    let get_mut_cases = keys
+        .iter()
+        .enumerate()
+        .map(|(idx, k)| {
+            let idx = syn::Index::from(idx);
+            let ret = quote!(Ok(self.0.tup.#idx.as_mut()));
+            quote!(#k => #ret)
+        })
+        .collect::<Vec<_>>();
+
     let insert_cases = keys
         .iter()
         .enumerate()
@@ -140,11 +150,18 @@ fn fastmap_derive_inner(
         .collect::<Vec<_>>();
     let out = quote! {
 
-        impl #impl_generics #crate_name::strict::MapLike<#key_type, #out_type> for #name #ty_generics #where_clause {
+        impl #impl_generics #name #ty_generics #where_clause {
 
             fn get<T: std::borrow::Borrow<#key_type>>(&self, key: T) -> std::result::Result<Option<&#out_type>, #crate_name::Error> {
                 match key.borrow() {
                     #(#get_cases,)*
+                    _ => Err(#crate_name::Error::KeyNotFound),
+                }
+            }
+
+            fn get_mut<T: std::borrow::Borrow<#key_type>>(&mut self, key: T) -> std::result::Result<Option<&mut #out_type>, #crate_name::Error> {
+                match key.borrow() {
+                    #(#get_mut_cases,)*
                     _ => Err(#crate_name::Error::KeyNotFound),
                 }
             }

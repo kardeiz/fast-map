@@ -3,13 +3,17 @@ A small library and custom derive to create a map-like struct that uses match ex
 
 If you know your keys at compile-time, this library will likely be faster than `HashMap` for supported map operations.
 
-Provides map operations through `strict::MapLike`, which returns an error when attempting to use unknown keys, and
-`easy::MapLike`, which ignores missing keys and more closely matches the `HashMap` API.
+Provides the following operations on the wrapping struct (via `derive` macros):
+
+* `MyMap::get`, returns `Result<Option<&V>, Error>`
+* `MyMap::get_mut`, returns `Result<Option<&mut V>, Error>`
+* `MyMap::insert`, returns `Result<Option<V>, Error>`, where `V` is the old value if one exists
+* `MyMap::remove`, returns `Result<Option<V>, Error>`
+* `MyMap::values`, returns an iterator over `&V`s
 
 # Usage
 
 ```rust,no_run
-use fast_map::easy::MapLike;
 
 fn main() {
     pub enum A { A, B, C, D };
@@ -20,17 +24,25 @@ fn main() {
 
     let mut foo = Foo::default();
 
-    foo.insert(A::B, "B".into());
+    foo.insert(A::B, "B".into()).unwrap();
 
-    assert_eq!(foo.get(A::B), Some(&"B".to_string()));
+    assert_eq!(foo.get(A::B).unwrap(), Some(&"B".to_string()));
 
-    assert_eq!(foo.get(A::C), None);
+    assert_eq!(foo.get(A::C).unwrap(), None);
 
-    foo.insert(A::C, "C".into());
+    foo.insert(A::C, "C".into()).unwrap();
 
     assert_eq!(foo.values().collect::<Vec<_>>().len(), 2);
 }
 ```
+
+# Changelog
+
+## 0.2.0
+
+* Removed `easy` and `strict` `MapLike` traits. It's better to handle unknown keys explicitly, even for `get`s.
+* Added `get_mut` operation to the wrapping struct
+
 */
 
 pub use fast_map_derive::FastMap;
@@ -84,55 +96,6 @@ impl<'fast_map, T> Iterator for Values<'fast_map, T> {
     }
 }
 
-/// Provides a `MapLike` trait that ignores errors on missing keys (more like `HashMap` API)
-pub mod easy {
-
-    use super::{strict, Values};
-
-    pub trait MapLike<K: ?Sized, T>: strict::MapLike<K, T> {
-        fn get<B: std::borrow::Borrow<K>>(&self, key: B) -> Option<&T> {
-            strict::MapLike::get(self, key).ok().and_then(|x| x)
-        }
-
-        fn insert<B: std::borrow::Borrow<K>>(&mut self, key: B, val: T) -> Option<T> {
-            strict::MapLike::insert(self, key, val).ok().and_then(|x| x)
-        }
-
-        fn remove<B: std::borrow::Borrow<K>>(&mut self, key: B) -> Option<T> {
-            strict::MapLike::remove(self, key).ok().and_then(|x| x)
-        }
-
-        fn values<'fast_map>(&'fast_map self) -> Values<'fast_map, T> {
-            strict::MapLike::values(self)
-        }
-    }
-
-    impl<K: ?Sized, T, U> MapLike<K, T> for U where U: strict::MapLike<K, T> {}
-}
-
-/// Provides a `MapLike` trait that errors when trying to `get` or `insert` missing keys
-pub mod strict {
-
-    use super::{Error, Values};
-
-    pub trait MapLike<K: ?Sized, T> {
-        fn get<B: std::borrow::Borrow<K>>(&self, key: B) -> std::result::Result<Option<&T>, Error>;
-
-        fn insert<B: std::borrow::Borrow<K>>(
-            &mut self,
-            key: B,
-            val: T,
-        ) -> std::result::Result<Option<T>, Error>;
-
-        fn remove<B: std::borrow::Borrow<K>>(
-            &mut self,
-            key: B,
-        ) -> std::result::Result<Option<T>, Error>;
-
-        fn values<'fast_map>(&'fast_map self) -> Values<'fast_map, T>;
-    }
-}
-
 #[cfg(test)]
 mod tests {
 
@@ -146,8 +109,6 @@ mod tests {
             C,
             D,
         };
-
-        use strict::MapLike;
 
         #[derive(Default, FastMap)]
         #[fast_map(crate_name = "crate", keys(A::A, A::B, A::C, A::D))]
@@ -168,7 +129,6 @@ mod tests {
 
     #[test]
     fn it_works_2() {
-        use easy::MapLike;
 
         #[derive(Default, FastMap)]
         #[fast_map(crate_name = "crate", keys("x", "y", "z"))]
@@ -178,11 +138,11 @@ mod tests {
 
         let insert_x = String::from("x");
 
-        foo.insert(insert_x.as_str(), &insert_x);
+        foo.insert(insert_x.as_str(), &insert_x).unwrap();
 
         assert_eq!(foo.values().collect::<Vec<_>>().len(), 1);
 
-        let x = foo.remove("x").unwrap();
+        let x = foo.remove("x").ok().flatten().unwrap();
 
         assert_eq!(x, "x");
 
@@ -191,7 +151,6 @@ mod tests {
 
     #[test]
     fn it_works_3() {
-        use crate::easy::MapLike;
 
         #[derive(Default, FastMap)]
         #[fast_map(crate_name = "crate", keys(1, 2, 3))]
