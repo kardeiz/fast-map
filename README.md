@@ -48,6 +48,8 @@ fn main() {
 * Added `get_mut` operation to the wrapping struct
 
 
+<hr/>
+
 Current version: 0.2.0
 
 License: MIT

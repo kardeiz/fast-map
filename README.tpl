@@ -5,6 +5,8 @@
 
 {{readme}}
 
+<hr/>
+
 Current version: {{version}}
 
 License: {{license}}
